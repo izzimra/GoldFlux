@@ -27,6 +27,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Third-party apps
+    "corsheaders",
+    "rest_framework",
     # Local apps
     "prices",
     "predictions",
@@ -35,12 +38,11 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "config.middleware.RateLimitMiddleware",
+    "config.middleware.CorrelationIdMiddleware",
+    "config.middleware.ErrorHandlingMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -90,3 +92,63 @@ STATIC_URL = "static/"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CORS Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+# Read allowed origins from environment variable (comma-separated).
+# Default: http://localhost:3000 (Next.js dev server)
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
+    ).split(",")
+    if origin.strip()
+]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Security Headers
+# ──────────────────────────────────────────────────────────────────────────────
+# X-Content-Type-Options: nosniff
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# X-Frame-Options: DENY
+X_FRAME_OPTIONS = "DENY"
+
+# Strict-Transport-Security: max-age=31536000
+SECURE_HSTS_SECONDS = 31536000
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ML Models Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+ML_MODELS_DIR = Path(
+    os.environ.get("ML_MODELS_DIR", str(BASE_DIR / "models"))
+)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Redis Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Celery Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Django REST Framework
+# ──────────────────────────────────────────────────────────────────────────────
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
+
+# Silence admin middleware checks (admin middleware not needed for API-only project)
+SILENCED_SYSTEM_CHECKS = ["admin.E408", "admin.E409", "admin.E410"]
+
