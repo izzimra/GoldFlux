@@ -9,7 +9,7 @@ import logging
 import os
 import uuid
 
-from celery import Celery
+from celery import Celery, chain
 from celery.schedules import crontab
 
 logger = logging.getLogger(__name__)
@@ -50,12 +50,23 @@ INGESTION_MINUTE = int(_minute)
 # Static task ID for duplicate rejection — prevents concurrent ingestion runs.
 INGESTION_TASK_ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "goldflux.ingest_gold_prices"))
 
+# Static task ID for the daily pipeline orchestrator — prevents concurrent
+# pipeline runs (the orchestrator triggers the ingestion → training →
+# prediction chain).
+DAILY_PIPELINE_TASK_ID = str(
+    uuid.uuid5(uuid.NAMESPACE_DNS, "goldflux.run_daily_pipeline")
+)
+
 app.conf.beat_schedule = {
-    "ingest-gold-prices-daily": {
-        "task": "prices.tasks.ingest_gold_prices",
+    "run-daily-pipeline": {
+        # Orchestrates the chain: ingest_gold_prices → train_model →
+        # generate_predictions. Cache invalidation is performed by each
+        # individual task on its own successful completion (historical price
+        # cache after ingestion, prediction cache after prediction generation).
+        "task": "config.celery.run_daily_pipeline",
         "schedule": crontab(hour=INGESTION_HOUR, minute=INGESTION_MINUTE),
         "options": {
-            "task_id": INGESTION_TASK_ID,
+            "task_id": DAILY_PIPELINE_TASK_ID,
         },
     },
 }
@@ -101,3 +112,46 @@ app.conf.task_reject_on_worker_lost = True
 def debug_task(self):
     """Debug task for verifying Celery connectivity."""
     print(f"Request: {self.request!r}")
+
+
+@app.task(bind=True, ignore_result=True, name="config.celery.run_daily_pipeline")
+def run_daily_pipeline(self):
+    """Trigger the daily data pipeline as a Celery chain.
+
+    Chain: ingest_gold_prices → train_model → generate_predictions
+
+    Each link runs only after the previous link succeeds (Celery aborts
+    chain execution when an upstream task raises an exception, so a
+    retry-exhausted failure in ingestion prevents training, and a failure
+    in training prevents prediction generation).
+
+    Cache invalidation is performed by individual tasks on completion:
+    - ``ingest_gold_prices`` invalidates the historical price cache.
+    - ``generate_predictions`` invalidates the prediction cache.
+
+    Immutable signatures (``.si()``) are used so each task is called with
+    no positional arguments — the upstream task's return value is
+    discarded rather than forwarded.
+
+    The news fetch task (``news.tasks.fetch_news``) is intentionally
+    *not* part of this chain; it runs on its own independent beat
+    schedule so a news pipeline failure cannot delay or block price
+    ingestion or model training (Requirement 23.4).
+    """
+    # Import lazily to avoid circular import / app-loading issues at
+    # module import time.
+    from predictions.tasks import generate_predictions, train_model
+    from prices.tasks import ingest_gold_prices
+
+    pipeline = chain(
+        ingest_gold_prices.si(),
+        train_model.si(),
+        generate_predictions.si(),
+    )
+    async_result = pipeline.apply_async()
+    logger.info(
+        "Dispatched daily pipeline chain: ingest_gold_prices → "
+        "train_model → generate_predictions (root task id: %s)",
+        async_result.id,
+    )
+    return async_result.id

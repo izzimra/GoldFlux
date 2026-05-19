@@ -116,7 +116,7 @@ This plan implements the complete GoldFlux financial news integration feature, c
     - **Property 6: Prediction replacement atomicity**
     - **Validates: Requirements 3.5, 4.1, 4.2, 4.3, 4.6, 15.7**
 
-- [ ] 5. Checkpoint - Ensure all backend pipeline tests pass
+- [x] 5. Checkpoint - Ensure all backend pipeline tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 6. Implement backend API endpoints for prices and predictions
@@ -230,7 +230,7 @@ This plan implements the complete GoldFlux financial news integration feature, c
     - **Property 17: News limit parameter enforcement**
     - **Validates: Requirements 18.1, 18.2, 18.3, 18.9**
 
-- [ ] 10. Checkpoint - Ensure all backend tests pass
+- [x] 10. Checkpoint - Ensure all backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Implement frontend API client and utilities
@@ -315,31 +315,31 @@ This plan implements the complete GoldFlux financial news integration feature, c
     - Mobile (<1024px): render as full-width section below chart area
     - _Requirements: 21.1, 21.2, 21.3_
 
-- [-] 14. Implement frontend Dashboard page and error handling
-  - [-] 14.1 Implement Dashboard page layout
+- [x] 14. Implement frontend Dashboard page and error handling
+  - [x] 14.1 Implement Dashboard page layout
     - Update `frontend/src/app/page.tsx` to orchestrate all components
     - Integrate HistoricalChart, PredictionChart, ModelInfoPanel, and MarketInsightsPanel
     - Implement data fetching on page load
     - Apply responsive layout with Tailwind CSS
     - _Requirements: 9.1, 10.1, 11.3, 20.1_
 
-  - [-] 14.2 Implement frontend error handling states
+  - [x] 14.2 Implement frontend error handling states
     - Implement error state hierarchy: timeout → 503 → rate limit → error with data → error without data
     - Preserve previously loaded data on refresh failure, show error notification
     - Show full-page error state when initial load fails with no prior data
     - Allow up to 3 consecutive retries, then show persistent failure message
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
 
-- [ ] 15. Checkpoint - Ensure all frontend and backend tests pass
+- [x] 15. Checkpoint - Ensure all frontend and backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Integration wiring and final configuration
-  - [ ] 16.1 Configure Django URL routing
+- [x] 16. Integration wiring and final configuration
+  - [x] 16.1 Configure Django URL routing
     - Wire all app URLs in `backend/config/urls.py`: prices, predictions, news under /api/v1/
     - Verify all endpoints are accessible: /api/v1/prices/historical, /api/v1/prices/predictions, /api/v1/model/metadata, /api/v1/news/gold/
     - _Requirements: 5.1, 6.1, 7.1, 18.1_
 
-  - [ ] 16.2 Configure environment variables and settings
+  - [x] 16.2 Configure environment variables and settings
     - Add all required env vars to Django settings: NEWS_API_BASE_URL, NEWS_API_KEY, NEWS_API_KEYWORDS, NEWS_FETCH_INTERVAL_HOURS, daily ingestion time
     - Configure Redis connection settings for cache and Celery broker
     - Configure PostgreSQL connection with 5-second timeout
@@ -347,13 +347,13 @@ This plan implements the complete GoldFlux financial news integration feature, c
     - Update requirements.txt with all new dependencies
     - _Requirements: 2.1, 8.7, 13.1, 13.2, 19.1, 19.2, 19.4_
 
-  - [ ] 16.3 Wire Celery task chains
+  - [x] 16.3 Wire Celery task chains
     - Configure task chain: ingest_gold_prices → train_model → generate_predictions
     - Ensure news fetch task runs independently on its own schedule
     - Verify cache invalidation triggers on pipeline completion
     - _Requirements: 3.1, 4.1, 8.3, 8.4, 23.4_
 
-  - [ ] 16.4 Write integration tests for full pipeline
+  - [x] 16.4 Write integration tests for full pipeline
     - Test data ingestion → training → prediction flow
     - Test news fetch → parse → cache → serve flow
     - Test cache invalidation on data refresh
@@ -361,7 +361,7 @@ This plan implements the complete GoldFlux financial news integration feature, c
     - Test rate limiting across all endpoints
     - _Requirements: 8.3, 8.4, 8.7, 8.8, 12.1, 16.1, 16.4_
 
-- [ ] 17. Final checkpoint - Ensure all tests pass
+- [x] 17. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

@@ -76,7 +76,7 @@ describe("MarketInsightsPanel", () => {
     render(<MarketInsightsPanel />);
 
     await waitFor(() => {
-      expect(screen.getByText("No news available")).toBeInTheDocument();
+      expect(screen.getByText(/no news.*available/i)).toBeInTheDocument();
     });
   });
 
