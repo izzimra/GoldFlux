@@ -315,15 +315,15 @@ This plan implements the complete GoldFlux financial news integration feature, c
     - Mobile (<1024px): render as full-width section below chart area
     - _Requirements: 21.1, 21.2, 21.3_
 
-- [ ] 14. Implement frontend Dashboard page and error handling
-  - [ ] 14.1 Implement Dashboard page layout
+- [-] 14. Implement frontend Dashboard page and error handling
+  - [-] 14.1 Implement Dashboard page layout
     - Update `frontend/src/app/page.tsx` to orchestrate all components
     - Integrate HistoricalChart, PredictionChart, ModelInfoPanel, and MarketInsightsPanel
     - Implement data fetching on page load
     - Apply responsive layout with Tailwind CSS
     - _Requirements: 9.1, 10.1, 11.3, 20.1_
 
-  - [ ] 14.2 Implement frontend error handling states
+  - [-] 14.2 Implement frontend error handling states
     - Implement error state hierarchy: timeout → 503 → rate limit → error with data → error without data
     - Preserve previously loaded data on refresh failure, show error notification
     - Show full-page error state when initial load fails with no prior data
