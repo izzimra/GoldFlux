@@ -31,19 +31,19 @@ export function PredictionChart({
     // Historical close prices series
     const historicalSeries = historicalData.map((item) => ({
       x: new Date(item.date).getTime(),
-      y: item.close,
+      y: Number(item.close),
     }));
 
     // Prediction close prices series
     const predictionSeries = predictions.map((item) => ({
       x: new Date(item.predicted_date).getTime(),
-      y: item.predicted_close_price,
+      y: Number(item.predicted_close_price),
     }));
 
     // Confidence interval band (rendered as a range-area)
     const confidenceBandSeries = predictions.map((item) => ({
       x: new Date(item.predicted_date).getTime(),
-      y: [item.confidence_interval_lower, item.confidence_interval_upper],
+      y: [Number(item.confidence_interval_lower), Number(item.confidence_interval_upper)],
     }));
 
     // Connect prediction line to last historical point for visual continuity
@@ -137,16 +137,16 @@ export function PredictionChart({
             if (matchingHistorical) {
               return `<div class="p-2 text-sm">
                 <div class="font-semibold mb-1">${date}</div>
-                <div>Open: $${matchingHistorical.open.toFixed(2)}</div>
-                <div>High: $${matchingHistorical.high.toFixed(2)}</div>
-                <div>Low: $${matchingHistorical.low.toFixed(2)}</div>
-                <div>Close: $${matchingHistorical.close.toFixed(2)}</div>
-                <div>Volume: ${matchingHistorical.volume.toLocaleString()}</div>
+                <div>Open: $${Number(matchingHistorical.open).toFixed(2)}</div>
+                <div>High: $${Number(matchingHistorical.high).toFixed(2)}</div>
+                <div>Low: $${Number(matchingHistorical.low).toFixed(2)}</div>
+                <div>Close: $${Number(matchingHistorical.close).toFixed(2)}</div>
+                <div>Volume: ${Number(matchingHistorical.volume).toLocaleString()}</div>
               </div>`;
             }
             return `<div class="p-2 text-sm">
               <div class="font-semibold mb-1">${date}</div>
-              <div>Close: $${dataPoint.y.toFixed(2)}</div>
+              <div>Close: $${Number(dataPoint.y).toFixed(2)}</div>
             </div>`;
           }
 
@@ -158,14 +158,14 @@ export function PredictionChart({
             if (matchingPrediction) {
               return `<div class="p-2 text-sm">
                 <div class="font-semibold mb-1">${date}</div>
-                <div>Predicted Close: $${matchingPrediction.predicted_close_price.toFixed(2)}</div>
-                <div>CI Lower: $${matchingPrediction.confidence_interval_lower.toFixed(2)}</div>
-                <div>CI Upper: $${matchingPrediction.confidence_interval_upper.toFixed(2)}</div>
+                <div>Predicted Close: $${Number(matchingPrediction.predicted_close_price).toFixed(2)}</div>
+                <div>CI Lower: $${Number(matchingPrediction.confidence_interval_lower).toFixed(2)}</div>
+                <div>CI Upper: $${Number(matchingPrediction.confidence_interval_upper).toFixed(2)}</div>
               </div>`;
             }
             return `<div class="p-2 text-sm">
               <div class="font-semibold mb-1">${date}</div>
-              <div>Predicted Close: $${dataPoint.y.toFixed(2)}</div>
+              <div>Predicted Close: $${Number(dataPoint.y).toFixed(2)}</div>
             </div>`;
           }
 
@@ -173,8 +173,8 @@ export function PredictionChart({
           if (seriesName === "95% Confidence Interval" && Array.isArray(dataPoint.y)) {
             return `<div class="p-2 text-sm">
               <div class="font-semibold mb-1">${date}</div>
-              <div>CI Lower: $${dataPoint.y[0].toFixed(2)}</div>
-              <div>CI Upper: $${dataPoint.y[1].toFixed(2)}</div>
+              <div>CI Lower: $${Number(dataPoint.y[0]).toFixed(2)}</div>
+              <div>CI Upper: $${Number(dataPoint.y[1]).toFixed(2)}</div>
             </div>`;
           }
 

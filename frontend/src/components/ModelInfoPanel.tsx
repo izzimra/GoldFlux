@@ -104,13 +104,13 @@ export function ModelInfoPanel() {
         <div>
           <dt className="text-xs font-medium text-gray-500">MAE</dt>
           <dd className="mt-1 text-sm text-gray-900">
-            {data.mean_absolute_error.toFixed(2)}
+            {Number(data.mean_absolute_error).toFixed(2)}
           </dd>
         </div>
         <div>
           <dt className="text-xs font-medium text-gray-500">RMSE</dt>
           <dd className="mt-1 text-sm text-gray-900">
-            {data.root_mean_squared_error.toFixed(2)}
+            {Number(data.root_mean_squared_error).toFixed(2)}
           </dd>
         </div>
       </dl>
