@@ -123,11 +123,11 @@ export function HistoricalChart({ className }: HistoricalChartProps) {
             <div class="p-3 bg-white shadow-lg rounded border text-sm">
               <div class="font-semibold mb-1">${point.date}</div>
               <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                <span class="text-gray-500">Open:</span><span>$${point.open.toFixed(2)}</span>
-                <span class="text-gray-500">High:</span><span>$${point.high.toFixed(2)}</span>
-                <span class="text-gray-500">Low:</span><span>$${point.low.toFixed(2)}</span>
-                <span class="text-gray-500">Close:</span><span class="font-medium">$${point.close.toFixed(2)}</span>
-                <span class="text-gray-500">Volume:</span><span>${point.volume.toLocaleString()}</span>
+                <span class="text-gray-500">Open:</span><span>$${Number(point.open).toFixed(2)}</span>
+                <span class="text-gray-500">High:</span><span>$${Number(point.high).toFixed(2)}</span>
+                <span class="text-gray-500">Low:</span><span>$${Number(point.low).toFixed(2)}</span>
+                <span class="text-gray-500">Close:</span><span class="font-medium">$${Number(point.close).toFixed(2)}</span>
+                <span class="text-gray-500">Volume:</span><span>${Number(point.volume).toLocaleString()}</span>
               </div>
             </div>
           `;
@@ -155,7 +155,7 @@ export function HistoricalChart({ className }: HistoricalChartProps) {
         name: "Close Price",
         data: data.map((d) => ({
           x: new Date(d.date).getTime(),
-          y: d.close,
+          y: Number(d.close),
         })),
       },
     ];
