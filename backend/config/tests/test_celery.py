@@ -27,33 +27,33 @@ class CeleryAppConfigTest(TestCase):
         self.assertEqual(celery_app.main, "config")
 
     def test_beat_schedule_contains_ingestion_task(self):
-        """Beat schedule should include the daily gold price ingestion task."""
+        """Beat schedule should include the daily pipeline orchestrator task."""
         from config.celery import app
 
         schedule = app.conf.beat_schedule
-        self.assertIn("ingest-gold-prices-daily", schedule)
+        self.assertIn("run-daily-pipeline", schedule)
 
     def test_ingestion_task_targets_correct_task(self):
-        """The scheduled task should target prices.tasks.ingest_gold_prices."""
+        """The scheduled daily task should target the pipeline orchestrator."""
         from config.celery import app
 
-        entry = app.conf.beat_schedule["ingest-gold-prices-daily"]
-        self.assertEqual(entry["task"], "prices.tasks.ingest_gold_prices")
+        entry = app.conf.beat_schedule["run-daily-pipeline"]
+        self.assertEqual(entry["task"], "config.celery.run_daily_pipeline")
 
     def test_ingestion_task_has_crontab_schedule(self):
-        """The ingestion task should use a crontab schedule."""
+        """The daily pipeline task should use a crontab schedule."""
         from celery.schedules import crontab
 
         from config.celery import app
 
-        entry = app.conf.beat_schedule["ingest-gold-prices-daily"]
+        entry = app.conf.beat_schedule["run-daily-pipeline"]
         self.assertIsInstance(entry["schedule"], crontab)
 
     def test_ingestion_task_has_task_id_for_duplicate_rejection(self):
-        """The ingestion task should have a fixed task_id to prevent duplicates."""
+        """The daily pipeline task should have a fixed task_id to prevent duplicates."""
         from config.celery import app
 
-        entry = app.conf.beat_schedule["ingest-gold-prices-daily"]
+        entry = app.conf.beat_schedule["run-daily-pipeline"]
         task_id = entry["options"]["task_id"]
         # Verify it's a valid UUID
         parsed = uuid.UUID(task_id)
@@ -243,3 +243,144 @@ class CeleryNewsScheduleTest(TestCase):
         schedule = entry["schedule"]
         # crontab minute should contain only 0
         self.assertEqual(schedule.minute, {0})
+
+
+class CeleryPipelineChainTest(TestCase):
+    """Tests verifying the daily pipeline chain wiring.
+
+    Wave 11 / Task 16.3: ingest_gold_prices → train_model → generate_predictions
+    must be wired as a Celery chain such that each task runs only after the
+    previous one succeeds, while the news fetch task remains independent.
+    """
+
+    def test_run_daily_pipeline_task_is_registered(self):
+        """The orchestrator task should be registered with Celery."""
+        from config.celery import app
+
+        self.assertIn("config.celery.run_daily_pipeline", app.tasks)
+
+    def test_pipeline_orchestrator_dispatches_chain(self):
+        """run_daily_pipeline should dispatch a chain of the three pipeline tasks."""
+        from unittest.mock import MagicMock, patch
+
+        with patch("celery.canvas._chain.apply_async") as mock_apply_async:
+            mock_apply_async.return_value = MagicMock(id="chain-root-id")
+
+            from config.celery import run_daily_pipeline
+
+            # Invoke the orchestrator's underlying function directly
+            result = run_daily_pipeline.run()
+
+            self.assertEqual(result, "chain-root-id")
+            self.assertTrue(mock_apply_async.called)
+
+    def test_pipeline_chain_order_is_ingest_train_predict(self):
+        """The chain order must be ingest_gold_prices → train_model → generate_predictions."""
+        from unittest.mock import patch
+
+        captured = {}
+
+        def fake_apply_async(self_, *args, **kwargs):
+            # ``self_`` is the chain instance; capture its tasks for inspection
+            captured["tasks"] = list(self_.tasks)
+
+            class _Result:
+                id = "chain-root-id"
+
+            return _Result()
+
+        with patch("celery.canvas._chain.apply_async", new=fake_apply_async):
+            from config.celery import run_daily_pipeline
+
+            run_daily_pipeline.run()
+
+        task_names = [sig.task for sig in captured["tasks"]]
+        self.assertEqual(
+            task_names,
+            [
+                "prices.tasks.ingest_gold_prices",
+                "predictions.tasks.train_model",
+                "predictions.tasks.generate_predictions",
+            ],
+        )
+
+    def test_pipeline_chain_uses_immutable_signatures(self):
+        """Chain signatures should be immutable so upstream return values aren't forwarded."""
+        from unittest.mock import patch
+
+        captured = {}
+
+        def fake_apply_async(self_, *args, **kwargs):
+            captured["tasks"] = list(self_.tasks)
+
+            class _Result:
+                id = "chain-root-id"
+
+            return _Result()
+
+        with patch("celery.canvas._chain.apply_async", new=fake_apply_async):
+            from config.celery import run_daily_pipeline
+
+            run_daily_pipeline.run()
+
+        # Immutable signatures have ``immutable=True`` on their options
+        for sig in captured["tasks"]:
+            self.assertTrue(
+                sig.immutable,
+                f"Chain signature for {sig.task} should be immutable",
+            )
+
+    def test_news_fetch_task_not_in_pipeline_chain(self):
+        """The news fetch task must NOT be part of the daily pipeline chain.
+
+        Validates Requirement 23.4: news pipeline operates independently.
+        """
+        from unittest.mock import patch
+
+        captured = {}
+
+        def fake_apply_async(self_, *args, **kwargs):
+            captured["tasks"] = list(self_.tasks)
+
+            class _Result:
+                id = "chain-root-id"
+
+            return _Result()
+
+        with patch("celery.canvas._chain.apply_async", new=fake_apply_async):
+            from config.celery import run_daily_pipeline
+
+            run_daily_pipeline.run()
+
+        task_names = [sig.task for sig in captured["tasks"]]
+        self.assertNotIn("news.tasks.fetch_news", task_names)
+
+    def test_daily_pipeline_task_id_is_deterministic(self):
+        """The orchestrator task_id should be deterministic across restarts."""
+        from config.celery import DAILY_PIPELINE_TASK_ID
+
+        expected = str(
+            uuid.uuid5(uuid.NAMESPACE_DNS, "goldflux.run_daily_pipeline")
+        )
+        self.assertEqual(DAILY_PIPELINE_TASK_ID, expected)
+
+    @patch.dict("os.environ", {"NEWS_API_KEY": "test-key-123"})
+    def test_news_schedule_independent_of_pipeline_schedule(self):
+        """News schedule must be a distinct entry from the daily pipeline schedule.
+
+        Validates Requirement 23.4: independent scheduling.
+        """
+        import config.celery as celery_module
+
+        importlib.reload(celery_module)
+        schedule = celery_module.app.conf.beat_schedule
+
+        self.assertIn("run-daily-pipeline", schedule)
+        self.assertIn("fetch-news-every-n-hours", schedule)
+
+        pipeline_entry = schedule["run-daily-pipeline"]
+        news_entry = schedule["fetch-news-every-n-hours"]
+
+        # Entries must target different tasks
+        self.assertNotEqual(pipeline_entry["task"], news_entry["task"])
+        self.assertEqual(news_entry["task"], "news.tasks.fetch_news")
